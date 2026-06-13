@@ -1,8 +1,8 @@
 from typing import Annotated, Optional
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Query
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from fastapi import Depends
+from sqlmodel import Field, Session, SQLModel, create_engine
 
 class Habit(SQLModel, table = True):
     id: Optional[int] = Field(default=None, primary_key=True)

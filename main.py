@@ -1,8 +1,20 @@
 from typing import Optional
-from fastapi import Depends, FastAPI, HTTPException, Query
-from database import Habit, get_session, create_db_and_tables, SessionDep
+from fastapi import FastAPI, HTTPException, Query
+from database import Habit, create_db_and_tables, SessionDep
 from sqlmodel import select
 from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+class HabitCreate(BaseModel):
+    title: str
+    description: str
+    times_per_week: int
+
+class HabitUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    times_per_week: Optional[int] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -10,6 +22,18 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+origins = [
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/habits/")
 def read_habits(
@@ -38,35 +62,35 @@ def delete_habit(habit_id: int, session: SessionDep):
 
 @app.post("/habits/post")
 def create_habit(
-    habit_title: str, 
-    habit_description: str,
-    times_per_week: int,
+    new_habit: HabitCreate,
     session: SessionDep
     ):
     
-    habit = Habit(title = habit_title, description=habit_description, times_per_week=times_per_week)
+    habit = Habit(
+        title = new_habit.title, 
+        description=new_habit.description, 
+        times_per_week=new_habit.times_per_week
+        )
     session.add(habit)
     session.commit()
-    return {"ok": True} 
+    return {"habit": habit} 
 
 @app.patch("/habits/{habit_id}")
 def update_habit(
     habit_id: int, 
-    habit_title: Optional[str] = None, 
-    habit_description: Optional[str]= None,
-    times_per_week: Optional[int] = None,
+    habit_data: HabitUpdate,
     session: SessionDep = None): 
     habit = session.get(Habit, habit_id)
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
-    if habit_title is not None:
-        habit.title = habit_title
+    if habit_data.title is not None:
+        habit.title = habit_data.title
 
-    if habit_description is not None:
-        habit.description = habit_description
+    if habit_data.description is not None:
+        habit.description = habit_data.description
 
-    if times_per_week is not None:
-        habit.times_per_week = times_per_week
+    if habit_data.times_per_week is not None:
+        habit.times_per_week = habit_data.times_per_week
     session.add(habit)
     session.commit()
     session.refresh(habit)
