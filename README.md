@@ -1,4 +1,3 @@
-````markdown id="kq9m21"
 # 🚀 AI-Powered Habit Tracker Backend
 
 A robust, high-performance REST API built with FastAPI that helps users track their daily habits and leverages AI to provide personalized insights and motivation.
@@ -23,11 +22,11 @@ A robust, high-performance REST API built with FastAPI that helps users track th
 ├── security.py          # Password hashing utilities
 ├── requirements.txt     # Dependencies
 └── .env                 # Environment variables (not committed)
-````
+```
 
 ## 🚀 Local Installation & Setup
 
-```bash id="setup2"
+```text
 # 1. Clone the repository
 git clone https://github.com/Ryassin19/Habit-Tracker-v2-.git
 cd Habit-Tracker-v2-
@@ -48,7 +47,4 @@ uvicorn main:app --reload
 http://127.0.0.1:8000
 # Docs:
 http://127.0.0.1:8000/docs
-```
-
-```
 ```
