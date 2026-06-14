@@ -1,227 +1,228 @@
 import { useState, useEffect } from 'react'
-import './App.jsx'
+import './index.css'
+import Login from './Login'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
+
   const [habits, setHabits] = useState([])
-  const [description, setDescription] = useState("")
-  const [title, setTitle] = useState("")
-  const [times_per_week, setTimes_per_week] = useState("")
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [timesPerWeek, setTimesPerWeek] = useState('')
 
   const [editingId, setEditingId] = useState(null)
-  const [editTitle, setEditTitle] = useState("")
-  const [editDescription, setEditDescription] = useState("")
-  const [editTimesPerWeek, setEditTimesPerWeek] = useState("")
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editTimesPerWeek, setEditTimesPerWeek] = useState('')
 
-  const fetch_habits = async () => {
-    try {
-      const response = await fetch("http://127.0.0.1:8000/habits/");
-      if (response.ok) {
-        const data = await response.json();
-        setHabits(data); 
-      }
-    } catch (error) {
-      console.error("Failed to fetch habits:", error);
-    }
-  };
+  const [aiHeadline, setAiHeadline] = useState('')
+  const [aiChallenges, setAiChallenges] = useState([])
+  const [completed, setCompleted] = useState({})
+  const [loadingAi, setLoadingAi] = useState(false)
 
   useEffect(() => {
-    fetch_habits();
-  }, []); 
+    if (localStorage.getItem('token')) setIsAuthenticated(true)
+    setLoading(false)
+  }, [])
 
-  const send_data = async () => {
+  const token = () => localStorage.getItem('token')
+
+  const fetchHabits = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/habits/post`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          title: title,
-          description: description,
-          times_per_week: times_per_week
-        })
-      });
+      const res = await fetch('http://127.0.0.1:8000/habits/', {
+        headers: { Authorization: `Bearer ${token()}` }
+      })
+      if (res.ok) setHabits(await res.json())
+      else if (res.status === 401) handleLogout()
+    } catch (e) { console.error(e) }
+  }
 
-      if (response.ok) {
-        console.log("Habit saved successfully!");
-        setTitle("");
-        setDescription("");
-        setTimes_per_week(3);
-        
-        fetch_habits(); 
-      }
-    } catch (error) {
-      console.error("Something went wrong:", error);
-    }
-  };
+  useEffect(() => { if (isAuthenticated) fetchHabits() }, [isAuthenticated])
 
-  const delete_habit = async (habitId, habitName) => {
+  const addHabit = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/habits/${habitId}`, {
-        method: "DELETE"
-      });
+      const res = await fetch('http://127.0.0.1:8000/habits/post', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, times_per_week: timesPerWeek })
+      })
+      if (res.ok) { setTitle(''); setDescription(''); setTimesPerWeek(''); fetchHabits() }
+    } catch (e) { console.error(e) }
+  }
 
-      if (response.ok) {
-        console.log(`Habit ${habitName} deleted successfully!`);
-        fetch_habits(); 
-      }
-    } catch (error) {
-      console.error("Failed to delete habit:", error);
-    }
-  };
-
- const save_edits = async (habitId) => {
+  const deleteHabit = async (id) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/habits/${habitId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: editTitle,
-          description: editDescription,
-          times_per_week: parseInt(editTimesPerWeek)
-        })
-      });
+      const res = await fetch(`http://127.0.0.1:8000/habits/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token()}` }
+      })
+      if (res.ok) fetchHabits()
+    } catch (e) { console.error(e) }
+  }
 
-      if (response.ok) {
-        console.log(`Habit ${habitId} updated successfully!`);
-        setEditingId(null); 
-        fetch_habits(); 
-      }
-    } catch (error) {
-      console.error("Failed to update habit:", error);
-    }
-  };
+  const saveEdits = async (id) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/habits/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editTitle, description: editDescription, times_per_week: parseInt(editTimesPerWeek) })
+      })
+      if (res.ok) { setEditingId(null); fetchHabits() }
+    } catch (e) { console.error(e) }
+  }
 
-  
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    setIsAuthenticated(false)
+    setHabits([])
+  }
+
+  const askAiCoach = async () => {
+    setLoadingAi(true); setAiHeadline(''); setAiChallenges([]); setCompleted({})
+    try {
+      const res = await fetch('http://127.0.0.1:8000/habits/ai-coach', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }
+      })
+      if (res.ok) { const d = await res.json(); setAiHeadline(d.headline); setAiChallenges(d.challenges) }
+    } catch (e) { setAiHeadline('Coach unavailable — try again shortly.') }
+    finally { setLoadingAi(false) }
+  }
+
+  const toggle = (i) => setCompleted(p => ({ ...p, [i]: !p[i] }))
+
+  const startEdit = (habit) => {
+    setEditingId(habit.id)
+    setEditTitle(habit.title)
+    setEditDescription(habit.description)
+    setEditTimesPerWeek(habit.times_per_week)
+  }
+
+  if (loading) return <div className="loading">Loading…</div>
+  if (!isAuthenticated) return <Login onLoginSuccess={() => setIsAuthenticated(true)} />
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>🎯 My Habit Tracker</h1>
-      
-      {/* 📝 FORM SECTION */}
-      <div style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginBottom: '20px', color: '#333' }}>
-        <h3>Create a New Habit</h3>
-        
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Habit Title:</label>
-          <input 
-            type="text" 
-            value={title} 
-            onChange={(e) => setTitle(e.target.value)} 
-            placeholder="e.g., Learn React"
-            style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box' }}
-          />
-        </div>
+    <div className="app">
 
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Description:</label>
-          <input 
-            type="text" 
-            value={description} 
-            onChange={(e) => setDescription(e.target.value)} 
-            placeholder="e.g., Code for 30 minutes"
-            style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box' }}
-          />
-        </div>
+      <header className="app-header">
+        <h1>Habit tracker</h1>
+        <button className="btn-signout" onClick={handleLogout}>Sign out</button>
+      </header>
 
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', fontWeight: 'bold' }}>Times Per Week:</label>
-          <input 
-            type="number" 
-            value={times_per_week} 
-            onChange={(e) => setTimes_per_week(parseInt(e.target.value) || "")}
-            placeholder="e.g., 3"
-            min="1"
-            max="7" 
-            style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box' }}
-          />
+      {/* Add habit */}
+      <div className="section-label"><h2>New habit</h2></div>
+      <div className="card">
+        <div className="field">
+          <label htmlFor="f-title">Title</label>
+          <input id="f-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning run" />
         </div>
-
-        <button 
-          onClick={send_data}
-          style={{ padding: '10px 15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          Add Habit
-        </button>
+        <div className="field">
+          <label htmlFor="f-desc">Description</label>
+          <input id="f-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. 20 minutes before breakfast" />
+        </div>
+        <div className="field">
+          <label htmlFor="f-freq">Times per week</label>
+          <input id="f-freq" type="number" value={timesPerWeek} onChange={e => setTimesPerWeek(parseInt(e.target.value) || '')} placeholder="1–7" min="1" max="7" />
+        </div>
+        <button className="btn btn-primary" onClick={addHabit}>Add habit</button>
       </div>
 
-      <hr />
-
-      {/* 📋 HABITS DISPLAY SECTION */}
-      <div>
-        <h3>My Habits</h3>
-        {habits.length === 0 ? (
-          <p style={{ color: '#666' }}>No habits found. Add one above!</p>
-        ) : (
-          habits.map((habit) => {
-            // CONDITION A: If editing this habit, show text boxes
-            if (editingId === habit.id) {
-              return (
-                <div key={habit.id} style={{ border: '2px solid #007bff', padding: '15px', borderRadius: '4px', marginBottom: '10px', background: '#222' }}>
-                  <h4 style={{ margin: '0 0 10px 0' }}>✏️ Editing Habit</h4>
-                  <input 
-                    type="text" 
-                    value={editTitle} 
-                    onChange={(e) => setEditTitle(e.target.value)} 
-                    style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }}
-                  />
-                  <input 
-                    type="text" 
-                    value={editDescription} 
-                    onChange={(e) => setEditDescription(e.target.value)} 
-                    style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }}
-                  />
-                  <input 
-                    type="number" 
-                    value={editTimesPerWeek} 
-                    onChange={(e) => setEditTimesPerWeek(e.target.value)} 
-                    min="1"
-                    max="7"
-                    style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }}
-                  />
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-evenly' }}>
-                    <button onClick={() => save_edits(habit.id)} style={{ background: '#28a745', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
-                    <button onClick={() => setEditingId(null)} style={{ background: '#6c757d', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-                  </div>
+      {/* AI Coach */}
+      <div className="section-label"><h2>AI coach</h2></div>
+      <div className="ai-card">
+        <div className="ai-card-top">
+          <div className="ai-eyebrow">Weekly quests</div>
+          <h3>Personalised challenges</h3>
+          <p>Three custom missions generated from your habit patterns.</p>
+        </div>
+        <div className="ai-card-action">
+          <button className="btn btn-primary btn-full" onClick={askAiCoach} disabled={loadingAi}>
+            {loadingAi ? 'Generating…' : 'Generate this week\'s quests'}
+          </button>
+        </div>
+        {aiHeadline && (
+          <div className="ai-results">
+            <p className="ai-headline">{aiHeadline}</p>
+            <div className="quest-list">
+              {aiChallenges.map((c, i) => (
+              <div key={i} className={`quest-item${completed[i] ? ' done' : ''}`} onClick={() => toggle(i)}>
+                <input 
+                  type="checkbox" 
+                  checked={!!completed[i]} 
+                  onChange={() => toggle(i)} 
+                  onClick={e => e.stopPropagation()} 
+                />
+                <div className="quest-item-label">
+                  {/* 🟢 IF 'c' is an object, render its keys. If it's a string, render the whole string directly! */}
+                  {typeof c === 'object' && c !== null ? (
+                    <>
+                      <strong>{c.title}</strong> {c.description && `— ${c.description}`}
+                      {c.target && <span>{c.target}</span>}
+                    </>
+                  ) : (
+                    <strong>{c}</strong>
+                  )}
                 </div>
-              )
-            }
+              </div>
+            ))}
+            </div>
+          </div>
+        )}
+      </div>
 
-            // CONDITION B: Default view mode
-            return (
-              <div key={habit.id} style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '4px', marginBottom: '10px' }}>
-                <h4>{habit.title}</h4>
-                <p>{habit.description}</p>
-                <p>🎯 {habit.times_per_week} times per week</p>
-                
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'space-evenly' }}>
-                  <button 
-                    onClick={() => {
-                      setEditingId(habit.id);
-                      setEditTitle(habit.title);
-                      setEditDescription(habit.description);
-                      setEditTimesPerWeek(habit.times_per_week);
-                    }}
-                    style={{ background: '#ffc107', color: 'black', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer'}}
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => delete_habit(habit.id)}
-                    style={{ background: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Delete
-                  </button>
+      {/* Habit list */}
+      <div className="section-label" style={{ marginTop: 8 }}><h2>My habits</h2></div>
+
+      {habits.length === 0 ? (
+        <div className="empty">
+          <p>No habits yet.</p>
+          <p>Add one above to get started.</p>
+        </div>
+      ) : (
+        <div className="habit-list">
+          {habits.map(habit => {
+            if (editingId === habit.id) return (
+              <div key={habit.id} className="habit-edit">
+                <div className="habit-edit-label">Editing</div>
+                <div className="field">
+                  <label>Title</label>
+                  <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Description</label>
+                  <input type="text" value={editDescription} onChange={e => setEditDescription(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Times per week</label>
+                  <input type="number" value={editTimesPerWeek} onChange={e => setEditTimesPerWeek(e.target.value)} min="1" max="7" />
+                </div>
+                <div className="edit-actions">
+                  <button className="btn btn-primary" onClick={() => saveEdits(habit.id)}>Save</button>
+                  <button className="btn btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
                 </div>
               </div>
             )
-          })
-        )}
-      </div>
+
+            return (
+              <div key={habit.id} className="habit-row">
+                <div className="habit-row-meta">
+                  <h4>{habit.title}</h4>
+                  <p>{habit.description}</p>
+                  <span className="habit-freq">{habit.times_per_week}× per week</span>
+                </div>
+                <div className="habit-row-actions">
+                  <button className="btn btn-edit" onClick={() => startEdit(habit)}>Edit</button>
+                  <button className="btn btn-danger" onClick={() => deleteHabit(habit.id)}>Delete</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
     </div>
   )
 }
 
 export default App
-
-
