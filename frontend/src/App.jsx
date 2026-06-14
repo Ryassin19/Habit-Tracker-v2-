@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import './index.css'
 import Login from './Login'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -30,7 +32,7 @@ function App() {
 
   const fetchHabits = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/habits/', {
+      const res = await fetch(`${API_BASE_URL}/habits/`, {
         headers: { Authorization: `Bearer ${token()}` }
       })
       if (res.ok) setHabits(await res.json())
@@ -42,7 +44,7 @@ function App() {
 
   const addHabit = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/habits/post', {
+      const res = await fetch(`${API_BASE_URL}/habits/post`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, times_per_week: timesPerWeek })
@@ -53,7 +55,7 @@ function App() {
 
   const deleteHabit = async (id) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/habits/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/habits/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token()}` }
       })
@@ -63,7 +65,7 @@ function App() {
 
   const saveEdits = async (id) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/habits/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/habits/${id}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: editTitle, description: editDescription, times_per_week: parseInt(editTimesPerWeek) })
@@ -81,7 +83,7 @@ function App() {
   const askAiCoach = async () => {
     setLoadingAi(true); setAiHeadline(''); setAiChallenges([]); setCompleted({})
     try {
-      const res = await fetch('http://127.0.0.1:8000/habits/ai-coach', {
+      const res = await fetch(`${API_BASE_URL}/habits/ai-coach`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }
       })
@@ -110,7 +112,6 @@ function App() {
         <button className="btn-signout" onClick={handleLogout}>Sign out</button>
       </header>
 
-      {/* Add habit */}
       <div className="section-label"><h2>New habit</h2></div>
       <div className="card">
         <div className="field">
@@ -128,7 +129,6 @@ function App() {
         <button className="btn btn-primary" onClick={addHabit}>Add habit</button>
       </div>
 
-      {/* AI Coach */}
       <div className="section-label"><h2>AI coach</h2></div>
       <div className="ai-card">
         <div className="ai-card-top">
@@ -154,7 +154,6 @@ function App() {
                   onClick={e => e.stopPropagation()} 
                 />
                 <div className="quest-item-label">
-                  {/* 🟢 IF 'c' is an object, render its keys. If it's a string, render the whole string directly! */}
                   {typeof c === 'object' && c !== null ? (
                     <>
                       <strong>{c.title}</strong> {c.description && `— ${c.description}`}
@@ -171,7 +170,6 @@ function App() {
         )}
       </div>
 
-      {/* Habit list */}
       <div className="section-label" style={{ marginTop: 8 }}><h2>My habits</h2></div>
 
       {habits.length === 0 ? (

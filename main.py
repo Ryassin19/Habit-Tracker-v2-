@@ -1,19 +1,24 @@
+import os
+import jwt
+import json
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Query, Depends
-from database import Habit, create_db_and_tables, SessionDep
-from sqlmodel import select, SQLModel, Session
-from contextlib import asynccontextmanager
-from fastapi.middleware.cors import CORSMiddleware
-from security import hash_password, verify_password
-from database import User, get_session, UserCreate, UserLogin
-import jwt, json
 from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
+from sqlmodel import select, SQLModel, Session
 from groq import Groq
+from dotenv import load_dotenv
 
-# A secret key used to sign the encrypted token (keep this private!)
-SECRET_KEY = "a_very_secret_and_long_random_string_here"
+from database import Habit, create_db_and_tables, SessionDep, User, get_session, UserCreate, UserLogin
+from security import hash_password, verify_password
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback_temporary_development_key")
 ALGORITHM = "HS256"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 class HabitCreate(SQLModel):
     title: str
@@ -34,11 +39,13 @@ app = FastAPI(lifespan=lifespan)
 
 origins = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    os.getenv("FRONTEND_URL", "*")  
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"] if "*" in origins else origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,23 +57,19 @@ def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
-        
         if user_id is None:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
-            
         return int(user_id) 
-        
     except jwt.PyJWTError:
-        # If the token is expired, fake, or tampered with, crash out!
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 @app.get("/habits/")
 def read_habits(
     session: SessionDep,
     current_user_id: int = Depends(get_current_user_id),
-    offset = 0,
-    limit = 100
-    ) -> list[Habit]:
+    offset: int = 0,
+    limit: int = 100
+) -> list[Habit]:
     habits = session.exec(select(Habit).where(Habit.user_id == current_user_id).offset(offset).limit(limit)).all()
     return habits
 
@@ -74,10 +77,9 @@ def read_habits(
 def read_single_habit(
     habit_id: int, 
     session: SessionDep,
-    current_user_id: int = Depends(get_current_user_id) # 🟢 Secure it
+    current_user_id: int = Depends(get_current_user_id) 
 ) -> Habit:
     habit = session.get(Habit, habit_id)
-    # Check if the habit exists AND belongs to the current user
     if not habit or habit.user_id != current_user_id:
         raise HTTPException(status_code=404, detail="Habit not found")
     return habit
@@ -86,13 +88,11 @@ def read_single_habit(
 def delete_habit(
     habit_id: int, 
     session: SessionDep,
-    current_user_id: int = Depends(get_current_user_id) # 🟢 Secure it
+    current_user_id: int = Depends(get_current_user_id) 
 ):
     habit = session.get(Habit, habit_id)
-    # Block users from deleting other people's habits
     if not habit or habit.user_id != current_user_id:
         raise HTTPException(status_code=404, detail="Habit not found")
-        
     session.delete(habit)
     session.commit()
     return {"ok": True}
@@ -101,14 +101,13 @@ def delete_habit(
 def create_habit(
     new_habit: HabitCreate,
     session: SessionDep,
-    current_user_id: int = Depends(get_current_user_id) # 🟢 1. Grab the logged-in user's ID
+    current_user_id: int = Depends(get_current_user_id) 
 ):
-    
     habit = Habit(
-        title = new_habit.title, 
+        title=new_habit.title, 
         description=new_habit.description, 
         times_per_week=new_habit.times_per_week,
-        user_id = current_user_id # 🟢 2. Tag this habit with their real ID!
+        user_id=current_user_id 
     )
     session.add(habit)
     session.commit()
@@ -118,20 +117,17 @@ def create_habit(
 def update_habit(
     habit_id: int, 
     habit_data: HabitUpdate,
-    session: SessionDep, # 🟢 Cleaned up standard dependency format here
-    current_user_id: int = Depends(get_current_user_id) # 🟢 Secure it
+    session: SessionDep, 
+    current_user_id: int = Depends(get_current_user_id) 
 ): 
     habit = session.get(Habit, habit_id)
-    # Block users from modifying other people's habits
     if not habit or habit.user_id != current_user_id:
         raise HTTPException(status_code=404, detail="Habit not found")
         
     if habit_data.title is not None:
         habit.title = habit_data.title
-
     if habit_data.description is not None:
         habit.description = habit_data.description
-
     if habit_data.times_per_week is not None:
         habit.times_per_week = habit_data.times_per_week
         
@@ -147,39 +143,27 @@ def signup(user_data: UserCreate, session: Session = Depends(get_session)):
         raise HTTPException(status_code=400, detail="Username already registered")
     
     secured_hash = hash_password(user_data.password)
-    
     new_user = User(
         username=user_data.username,
         hashed_password=secured_hash
     )
-    
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
-    
     return {"message": "User created successfully", "user_id": new_user.id}
 
 @app.post("/login")
 def login(user_data: UserLogin, session: Session = Depends(get_session)):
     user = session.exec(select(User).where(User.username == user_data.username)).first()
-    
-    if not user:
+    if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid username or password")
     
-    password_is_correct = verify_password(user_data.password, user.hashed_password)
-    
-    if not password_is_correct:
-        raise HTTPException(status_code=400, detail="Invalid username or password")
-    
-
     expire = datetime.now(timezone.utc) + timedelta(minutes=30)
     token_payload = {
         "sub": str(user.id),
         "exp": expire
     }
-    
     encoded_jwt = jwt.encode(token_payload, SECRET_KEY, algorithm=ALGORITHM)
-    
     return {"access_token": encoded_jwt, "token_type": "bearer"}
 
 @app.post("/habits/ai-coach")
@@ -188,7 +172,6 @@ def get_ai_coaching(
     current_user_id: int = Depends(get_current_user_id)
 ):
     habits = session.exec(select(Habit).where(Habit.user_id == current_user_id)).all()
-    
     if not habits:
         return {
             "headline": "Welcome to your AI Coach!",
@@ -199,12 +182,9 @@ def get_ai_coaching(
             ]
         }
         
-    habit_list_text = ""
-    for h in habits:
-        habit_list_text += f"- {h.title}: {h.description} ({h.times_per_week}x/week)\n"
-        
-    client = Groq(api_key="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") # ⚠️ Keep your real key here!
+    habit_list_text = "".join([f"- {h.title}: {h.description} ({h.times_per_week}x/week)\n" for h in habits])
     
+    client = Groq(api_key=GROQ_API_KEY)
     completion = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
@@ -224,12 +204,8 @@ def get_ai_coaching(
             }
         ],
         temperature=0.7,
-        # 🟢 Force Groq to respond strictly in structured JSON format
         response_format={"type": "json_object"} 
     )
     
-    # Parse the string response from the AI back into a clean Python dictionary
     raw_json_string = completion.choices[0].message.content
-    structured_data = json.loads(raw_json_string)
-    
-    return structured_data
+    return json.loads(raw_json_string)

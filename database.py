@@ -1,14 +1,18 @@
+import os
 from typing import Annotated, Optional
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from fastapi import Depends
 from sqlmodel import Field, Session, SQLModel, create_engine
+from dotenv import load_dotenv
 
-class Habit(SQLModel, table = True):
+load_dotenv()
+
+class Habit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(index=True)
-    description: Optional[str] = Field(default = None)
-    created_at: datetime = Field(default_factory= lambda: datetime.now(timezone.utc))
+    description: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     times_per_week: int
     user_id: int = Field(foreign_key="user.id")
 
@@ -25,8 +29,14 @@ class User(SQLModel, table=True):
     username: str = Field(unique=True, index=True)
     hashed_password: str 
 
-postgres_url = "postgresql://myuser:mypassword@localhost:5432/habit_db"
-engine = create_engine(postgres_url)
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql://myuser:mypassword@localhost:5432/habit_db"
+)
+
+connect_args = {"sslmode": "require"} if DATABASE_URL and "localhost" not in DATABASE_URL else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)

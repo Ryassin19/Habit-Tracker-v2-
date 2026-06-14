@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 export default function Login({ onLoginSuccess }) {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
+
+    const endpoint = isSignUp ? '/signup' : '/login';
 
     try {
-      // 1. Shoot the credentials over to our new FastAPI login route
-      const response = await fetch('http://localhost:8000/login', {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,54 +28,84 @@ export default function Login({ onLoginSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
-        // If FastAPI says 400 or 422, display the error message
-        throw new Error(data.detail || 'Invalid username or password');
+        throw new Error(data.detail || 'Something went wrong');
       }
 
-      // 2. If successful, save the access token to the browser's permanent memory
-      localStorage.setItem('token', data.access_token);
-
-      // 3. Tell the main App component that we are successfully logged in!
-      onLoginSuccess();
+      if (isSignUp) {
+        setMessage('Account created successfully! Please sign in.');
+        setIsSignUp(false);
+        setPassword('');
+      } else {
+        localStorage.setItem('token', data.access_token);
+        onLoginSuccess();
+      }
     } catch (err) {
       setError(err.message);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '100px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2>Track Your Habits</h2>
-      <h3>Sign In</h3>
-      
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Username:</label>
-          <input 
-            type="text" 
-            value={username} 
-            onChange={(e) => setUsername(e.target.value)} 
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-            required
-          />
-        </div>
+    <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
         
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>Password:</label>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-            required
-          />
+        <div className="ai-eyebrow" style={{ textAlign: 'center', marginBottom: '4px' }}>
+          {isSignUp ? '✨ Join Us' : '⚡ Welcome Back'}
         </div>
-        
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          Login
-        </button>
-      </form>
+        <h1 style={{ textAlign: 'center', marginBottom: '24px' }}>
+          {isSignUp ? 'Create Account' : 'Habit Tracker'}
+        </h1>
+
+        {error && (
+          <div style={{ color: 'var(--red)', background: 'var(--red-light)', padding: '10px', borderRadius: 'var(--radius)', fontSize: '13px', marginBottom: '16px', border: '1px solid rgba(192, 57, 43, 0.2)' }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {message && (
+          <div style={{ color: 'var(--teal)', background: 'var(--teal-light)', padding: '10px', borderRadius: 'var(--radius)', fontSize: '13px', marginBottom: '16px', border: '1px solid var(--teal-dim)' }}>
+            🎉 {message}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <label>Username</label>
+            <input 
+              type="text" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              required 
+              placeholder="Username"
+            />
+          </div>
+
+          <div className="field">
+            <label>Password</label>
+            <input 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: '12px' }}>
+            {isSignUp ? 'Sign Up' : 'Sign In'}
+          </button>
+        </form>
+
+        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--ink-3)', fontFamily: 'system-ui, sans-serif' }}>
+          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+          <span 
+            onClick={() => { setIsSignUp(!isSignUp); setError(''); setMessage(''); }} 
+            style={{ color: 'var(--teal)', cursor: 'pointer', fontWeight: '600', textDecoration: 'underline' }}
+          >
+            {isSignUp ? 'Sign In' : 'Sign Up'}
+          </span>
+        </div>
+
+      </div>
     </div>
   );
 }
