@@ -1,17 +1,16 @@
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 from database import Habit, create_db_and_tables, SessionDep
-from sqlmodel import select
+from sqlmodel import select, SQLModel
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-class HabitCreate(BaseModel):
+class HabitCreate(SQLModel):
     title: str
     description: str
     times_per_week: int
 
-class HabitUpdate(BaseModel):
+class HabitUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
     times_per_week: Optional[int] = None

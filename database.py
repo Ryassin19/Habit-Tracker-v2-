@@ -11,11 +11,8 @@ class Habit(SQLModel, table = True):
     created_at: datetime = Field(default_factory= lambda: datetime.now(timezone.utc))
     times_per_week: int
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-
-connect_args = {"check_same_thread": False}
-engine = create_engine(sqlite_url, connect_args=connect_args)
+postgres_url = "postgresql://myuser:mypassword@localhost:5432/habit_db"
+engine = create_engine(postgres_url)
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
