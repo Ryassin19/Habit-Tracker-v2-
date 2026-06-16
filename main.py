@@ -63,6 +63,10 @@ def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the Habit Tracker API! Head to /docs for the interactive documentation."}
+
 @app.get("/habits/")
 def read_habits(
     session: SessionDep,
