@@ -88,7 +88,7 @@ function App() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }
       })
-      if (res.ok) { const d = await res.json(); setAiHeadline(d.headline); setAiChallenges(d.challenges) }
+      if (res.ok) { const d = await res.json(); setAiHeadline(d.headline); setAiChallenges(d.challenges || []) }
     } catch (e) { setAiHeadline('Coach unavailable — try again shortly.') }
     finally { setLoadingAi(false) }
   }
@@ -146,26 +146,30 @@ function App() {
           <div className="ai-results">
             <p className="ai-headline">{aiHeadline}</p>
             <div className="quest-list">
-              {aiChallenges.map((c, i) => (
-              <div key={i} className={`quest-item${completed[i] ? ' done' : ''}`} onClick={() => toggle(i)}>
-                <input 
-                  type="checkbox" 
-                  checked={!!completed[i]} 
-                  onChange={() => toggle(i)} 
-                  onClick={e => e.stopPropagation()} 
-                />
-                <div className="quest-item-label">
-                  {typeof c === 'object' && c !== null ? (
-                    <>
-                      <strong>{c.title || c.description}</strong>
-                      {c.title && c.description && ` — ${c.description}`}
-                    </>
-                  ) : (
-                    <strong>{c}</strong>
-                  )}
-                </div>
-              </div>
-            ))}
+              {Array.isArray(aiChallenges) ? (
+                aiChallenges.map((c, i) => (
+                  <div key={i} className={`quest-item${completed[i] ? ' done' : ''}`} onClick={() => toggle(i)}>
+                    <input 
+                      type="checkbox" 
+                      checked={!!completed[i]} 
+                      onChange={() => toggle(i)} 
+                      onClick={e => e.stopPropagation()} 
+                    />
+                    <div className="quest-item-label">
+                      {typeof c === 'object' && c !== null ? (
+                        <>
+                          <strong>{c.title || c.description}</strong>
+                          {c.title && c.description && ` — ${c.description}`}
+                        </>
+                      ) : (
+                        <strong>{c}</strong>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-400 text-sm">No active challenges. Click above to generate quests!</p>
+              )}
             </div>
           </div>
         )}
