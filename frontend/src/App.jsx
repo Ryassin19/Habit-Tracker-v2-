@@ -56,7 +56,7 @@ function App() {
       const res = await fetch(`${API_BASE_URL}/habits/post`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, times_per_week: timesPerWeek })
+        body: JSON.stringify({ title: title.trim() , description: description || null, times_per_week: num })
       })
       if (res.ok) { setTitle(''); setDescription(''); setTimesPerWeek(''); fetchHabits() }
     } catch (e) { console.error(e) }
@@ -127,15 +127,15 @@ function App() {
       <div className="card">
         <div className="field">
           <label htmlFor="f-title">Title</label>
-          <input id="f-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning run" required />
+          <input id="f-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning run" />
         </div>
         <div className="field">
           <label htmlFor="f-desc">Description</label>
-          <input id="f-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. 20 minutes before breakfast" required />
+          <input id="f-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. 20 minutes before breakfast" />
         </div>
         <div className="field">
           <label htmlFor="f-freq">Times per week</label>
-          <input id="f-freq" type="number" value={timesPerWeek} onChange={e => setTimesPerWeek(parseInt(e.target.value) || '')} placeholder="1–7" min="1" max="7" required />
+          <input id="f-freq" type="number" value={timesPerWeek} onChange={e => setTimesPerWeek(parseInt(e.target.value) || '')} placeholder="1–7" />
         </div>
         <button className="btn btn-primary" onClick={addHabit}>Add habit</button>
       </div>
