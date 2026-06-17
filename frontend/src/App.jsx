@@ -78,6 +78,7 @@ function App() {
     localStorage.removeItem('token')
     setIsAuthenticated(false)
     setHabits([])
+    setAiChallenges("")
   }
 
   const askAiCoach = async () => {
@@ -156,8 +157,8 @@ function App() {
                 <div className="quest-item-label">
                   {typeof c === 'object' && c !== null ? (
                     <>
-                      <strong>{c.title}</strong> {c.description && `— ${c.description}`}
-                      {c.target && <span>{c.target}</span>}
+                      <strong>{c.title || c.description}</strong>
+                      {c.title && c.description && ` — ${c.description}`}
                     </>
                   ) : (
                     <strong>{c}</strong>
