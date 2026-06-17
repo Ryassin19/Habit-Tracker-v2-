@@ -78,7 +78,8 @@ function App() {
     localStorage.removeItem('token')
     setIsAuthenticated(false)
     setHabits([])
-    setAiChallenges("")
+    setAiChallenges([])
+    setAiHeadline('')
   }
 
   const askAiCoach = async () => {
