@@ -43,6 +43,15 @@ function App() {
   useEffect(() => { if (isAuthenticated) fetchHabits() }, [isAuthenticated])
 
   const addHabit = async () => {
+    if (!title.trim()) {
+      alert("Please enter a habit title!");
+      return; 
+    }
+    const num = parseInt(timesPerWeek);
+    if (isNaN(num) || num < 1 || num > 7) {
+      alert("Times per week must be a number between 1 and 7!");
+      return; 
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/habits/post`, {
         method: 'POST',
@@ -118,7 +127,6 @@ function App() {
       <div className="card">
         <div className="field">
           <label htmlFor="f-title">Title</label>
-          
           <input id="f-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning run" required />
         </div>
         <div className="field">

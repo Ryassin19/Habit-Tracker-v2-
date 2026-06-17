@@ -10,11 +10,11 @@ load_dotenv()
 
 class Habit(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(index=True)
+    title: str = Field(index=True, min_length=1)
     description: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    times_per_week: int
-    user_id: int = Field(foreign_key="user.id", ge=1, le=7)
+    times_per_week: int = Field(ge=1, le=7)
+    user_id: int = Field(foreign_key="user.id")
 
 class UserCreate(BaseModel):
     username: str
