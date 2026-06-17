@@ -118,15 +118,16 @@ function App() {
       <div className="card">
         <div className="field">
           <label htmlFor="f-title">Title</label>
-          <input id="f-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning run" />
+          
+          <input id="f-title" type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Morning run" required />
         </div>
         <div className="field">
           <label htmlFor="f-desc">Description</label>
-          <input id="f-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. 20 minutes before breakfast" />
+          <input id="f-desc" type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. 20 minutes before breakfast" required />
         </div>
         <div className="field">
           <label htmlFor="f-freq">Times per week</label>
-          <input id="f-freq" type="number" value={timesPerWeek} onChange={e => setTimesPerWeek(parseInt(e.target.value) || '')} placeholder="1–7" min="1" max="7" />
+          <input id="f-freq" type="number" value={timesPerWeek} onChange={e => setTimesPerWeek(parseInt(e.target.value) || '')} placeholder="1–7" min="1" max="7" required />
         </div>
         <button className="btn btn-primary" onClick={addHabit}>Add habit</button>
       </div>

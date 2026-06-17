@@ -14,7 +14,7 @@ class Habit(SQLModel, table=True):
     description: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     times_per_week: int
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", ge=1, le=7)
 
 class UserCreate(BaseModel):
     username: str
