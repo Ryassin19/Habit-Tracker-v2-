@@ -24,7 +24,7 @@ function App() {
   const [loadingAi, setLoadingAi] = useState(false)
 
   useEffect(() => {
-    if (localStorage.getItem('token')) setIsAuthenticated(true)
+    if (token()) setIsAuthenticated(true)
     setLoading(false)
   }, [])
 
@@ -103,8 +103,23 @@ function App() {
     finally { setLoadingAi(false) }
   }
 
-  const toggle = (i) => setCompleted(p => ({ ...p, [i]: !p[i] }))
+  const toggle = (i) => {
+    setCompleted((prevState) => {
+      const newState = {};
 
+      for (const key in prevState) {
+        newState[key] = prevState[key];
+      }
+
+      if (prevState[i] === true) {
+        newState[i] = false;
+      } else {
+        newState[i] = true;
+      }
+
+      return newState;
+    });
+  };
   const startEdit = (habit) => {
     setEditingId(habit.id)
     setEditTitle(habit.title)
